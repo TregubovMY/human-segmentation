@@ -5,10 +5,19 @@ hydra:
 
 defaults:
   - process: process1
-  - model: model1
+  - model: model3
   - _self_
 
 data:
-  raw: data/raw/sample.csv
-  processed: data/processed/processed.csv
-  final: data/final/final.csv
+  raw: ${process.raw}
+  processed: ${process.processed}
+  final: ${process.final}
+  results: ${process.results}
+  test: data\test\
+  validation: data\validation\
+
+augment: True
+
+resolution:
+  HEIGHT: 512
+  WIDTH: 512

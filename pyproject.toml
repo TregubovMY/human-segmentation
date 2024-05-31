@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Human-Segmentation using CNN"
 authors = ["TregubovMU <mtregubov@sfedu.ru>"]
 packages = [{ include = "src" }]
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
@@ -19,7 +20,8 @@ python-io = "^0.3"
 gdown = "^4.7.1"
 zipfile36 = "^0.1.3"
 opencv-python = "^4.9.0.80"
-numpy = "1.24.3"
+numpy = ">=1.24.4"
+albumentations = "^1.4.3"
 
 [tool.poetry.group.tensorflow.dependencies]
 # Issue between poetry and tensorflow metadata since >=2.11

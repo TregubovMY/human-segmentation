@@ -1,3 +1,3 @@
-use_columns:
-  - col1
-  - col2
+raw: data\raw\people_segmentation\
+final: data\final\people_segmentation\
+results: data\results\people_segmentation\

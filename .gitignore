@@ -65,9 +65,15 @@ target/
 *.db
 *.rdb
 
-# Models h5 file
-models/*.csv
-models/*.h5
+# Models h5 file and logs
+*.h5
+
+# Data
+/data/raw/*
+/data/final/*
+/data/validation/*
+/data/test/*
+/results/*/*/*.png
 
 # Pycharm
 .idea
@@ -98,3 +104,7 @@ outputs
 
 # We are waiting for better times
 .pre-commit-config.yaml.old
+
+# md file
+to-do.md
+info.md

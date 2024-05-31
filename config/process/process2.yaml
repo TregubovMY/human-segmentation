@@ -1,4 +1,3 @@
-use_columns:
-  - col1
-  - col2
-  - col3
+raw: data\raw\P3M-10k\train\
+final: data\final\P3M-10k\train\
+results: data\results\P3M-10k\train\
