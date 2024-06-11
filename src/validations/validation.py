@@ -10,6 +10,7 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 import tensorflow as tf
 from sklearn.metrics import accuracy_score, f1_score, jaccard_score, precision_score, recall_score
+
 from ..metrics.metrics import *
 from ..utils.utils import save_results, read_image
 from ..models.deepLabV3_plus import model_deepLabV3_plus
@@ -24,77 +25,83 @@ MODEL_FUNCTIONS = {
     "deepLabV3_plus": model_deepLabV3_plus,
 }
 
-
 @hydra.main(config_path="../../config", config_name="main", version_base=None)
 def val(cfg: DictConfig):
-    HEIGHT = cfg.resolution.HEIGHT
-    WIDTH = cfg.resolution.WIDTH
-    """ Seeding """
+    """
+    Выполняет валидацию модели сегментации на тестовом наборе данных.
+
+    :param cfg: Конфигурация Hydra, содержащая параметры модели и пути к данным.
+    :type cfg: DictConfig
+    """
+    height = cfg.resolution.HEIGHT
+    width = cfg.resolution.WIDTH
+
+    """ Настройка зерна случайных чисел """
     np.random.seed(42)
     tf.random.set_seed(42)
 
-    """ Loading model """
+    """ Загрузка модели """
     model_name = cfg.model.name
     model_function = MODEL_FUNCTIONS[model_name]
     model = model_function()
 
-    """ Load the dataset """
+    """ Загрузка набора данных """
     valid_path = cfg.data.validation
-    test_x, test_y = load_data(valid_path)
-    print(f"Test: {len(test_x)} - {len(test_y)}")
+    test_image_paths, test_mask_paths = load_data(valid_path)
+    print(f"Test: {len(test_image_paths)} - {len(test_mask_paths)}")
 
-    """ Evaluation and Prediction """
-    SCORE = []
-    with open(f"files/score_n2_net_lite.csv", 'w', newline='') as file:
+    """ Оценка и предсказание """
+    scores = []
+    with open(f"files/score_{model_name}.csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Image", "Accuracy", "F1", "Jaccard", "Recall", "Precision"])
-        for x, y in tqdm(zip(test_x, test_y), total=len(test_x)):
-            """ Extract the name """
-            name = os.path.basename(x).split('.')[0]
+        for image_path, mask_path in tqdm(zip(test_image_paths, test_mask_paths), total=len(test_image_paths)):
+            """ Извлечение имени """
+            name = os.path.basename(image_path).split('.')[0]
 
-            """ Reading the image """
-            image = cv2.imread(x, cv2.IMREAD_COLOR)
-            h, w, _ = image.shape
-            x = cv2.resize(image, (HEIGHT, WIDTH))
+            """ Чтение изображения """
+            image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            original_height, original_width, _ = image.shape
+            image = cv2.resize(image, (width, height))
+            image = image / 255.0
+            image = np.expand_dims(image, axis=0)
 
-            x = x/255.0
-            x = np.expand_dims(x, axis=0)
+            """ Чтение маски """
+            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
 
-            """ Reading the mask """
-            mask = cv2.imread(y, cv2.IMREAD_GRAYSCALE)
-
-            """ Prediction """
-            y_pred = model.predict(x, verbose=0)
+            """ Предсказание """
+            y_pred = model.predict(image, verbose=0)
 
             # Проверка, является ли модель U2-Net
-            if isinstance(y, list):
+            if isinstance(y_pred, list):
                 y_pred = y_pred[0][0]
             else:
                 y_pred = y_pred[0]
-            y_pred = cv2.resize(y_pred, (w, h))
+            y_pred = cv2.resize(y_pred, (original_width, original_height))
             y_pred = y_pred > 0.5
 
-            """ Saving the prediction """
+            """ Сохранение предсказания """
             save_image_path = f"results/{model_name}/images/{name}.png"
             save_results(image, mask, y_pred, save_image_path)
 
-            """ Flatten the array """
+            """ Выравнивание массива """
             mask = mask.flatten()
             y_pred = y_pred.flatten()
 
             y_pred = y_pred.astype(np.int32)
             mask = mask > 0.5
-            """ Calculating the metrics values """
+
+            """ Вычисление значений метрик """
             acc_value = accuracy_score(mask, y_pred)
             f1_value = f1_score(mask, y_pred, labels=[0, 1], average="binary")
             jac_value = jaccard_score(mask, y_pred, labels=[0, 1], average="binary")
             recall_value = recall_score(mask, y_pred, labels=[0, 1], average="binary")
             precision_value = precision_score(mask, y_pred, labels=[0, 1], average="binary")
-            SCORE.append([acc_value, f1_value, jac_value, recall_value, precision_value])
+            scores.append([acc_value, f1_value, jac_value, recall_value, precision_value])
             writer.writerow([name, acc_value, f1_value, jac_value, recall_value, precision_value])
 
-    """ Metrics values """
-    score = [s for s in SCORE]
+    """ Значения метрик """
+    score = [s for s in scores]
     score = np.mean(score, axis=0)
     print(f"Accuracy: {score[0]:0.5f}")
     print(f"F1: {score[1]:0.5f}")
