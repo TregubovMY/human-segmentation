@@ -17,100 +17,111 @@ from sklearn.utils import shuffle
 from tqdm import tqdm
 
 def load_data(path: str) -> Tuple[List[str], List[str]]:
-    """Загружает пути к изображениям и маскам из указанной директории.
+    """
+    Загружает пути к изображениям и маскам из указанной директории.
 
-    Args:
-        path (str): Путь к директории с данными, содержащей подпапки "images" и "masks".
-
-    Returns:
-        Tuple[List[str], List[str]]: Кортеж из двух списков: путей к изображениям и путей к маскам.
+    :param path: Путь к директории с данными, содержащей подпапки "images" и "masks".
+    :type path: str
+    :return: Кортеж из двух списков: путей к изображениям и путей к маскам.
+    :rtype: Tuple[List[str], List[str]]
     """
 
     image_extensions = ["*.jpg", "*.jpeg", "*.png"]
     mask_extensions = ["*.png"]
 
-    x = []
+    images = []
     for ext in image_extensions:
-        x.extend(sorted(glob(os.path.join(path, "images", ext))))
+        images.extend(sorted(glob(os.path.join(path, "images", ext))))
 
-    y = []
+    masks = []
     for ext in mask_extensions:
-        y.extend(sorted(glob(os.path.join(path, "masks", ext))))
-    return x, y
+        masks.extend(sorted(glob(os.path.join(path, "masks", ext))))
 
-def shuffling(x: List[str], y: List[str]) -> Tuple[List[str], List[str]]:
-    """Перемешивает списки изображений и масок.
+    return images, masks
 
-    Args:
-        x (List[str]): Список путей к изображениям.
-        y (List[str]): Список путей к маскам.
+def shuffling(images: List[str], masks: List[str]) -> Tuple[List[str], List[str]]:
+    """
+    Перемешивает списки изображений и масок.
 
-    Returns:
-        Tuple[List[str], List[str]]: Кортеж из двух перемешанных списков: путей к изображениям и путей к маскам.
+    :param images: Список путей к изображениям.
+    :type images: List[str]
+    :param masks: Список путей к маскам.
+    :type masks: List[str]
+    :return: Кортеж из двух перемешанных списков: путей к изображениям и путей к маскам.
+    :rtype: Tuple[List[str], List[str]]
     """
 
-    x, y = shuffle(x, y, random_state=42)
-    return x, y
+    images, masks = shuffle(images, masks, random_state=42)
+    return images, masks
 
 def split_dataset(path: str, split: float = 0.1) -> Tuple[Tuple[List[str], List[str]], Tuple[List[str], List[str]]]:
-    """Разбивает набор данных на обучающую и тестовую выборки.
+    """
+    Разбивает набор данных на обучающую и тестовую выборки.
 
-    Args:
-        path (str): Путь к директории с данными.
-        split (float, optional): Доля данных, выделяемая для тестовой выборки. По умолчанию 0.1.
-
-    Returns:
-        Tuple[Tuple[List[str], List[str]], Tuple[List[str], List[str]]]: Кортеж из двух кортежей:
-            - Первый кортеж содержит списки путей к изображениям и маскам для обучения.
-            - Второй кортеж содержит списки путей к изображениям и маскам для тестирования.
+    :param path: Путь к директории с данными.
+    :type path: str
+    :param split: Доля данных, выделяемая для тестовой выборки. По умолчанию 0.1.
+    :type split: float, optional
+    :return: Кортеж из двух кортежей:
+        - Первый кортеж содержит списки путей к изображениям и маскам для обучения.
+        - Второй кортеж содержит списки путей к изображениям и маскам для тестирования.
+    :rtype: Tuple[Tuple[List[str], List[str]], Tuple[List[str], List[str]]]
     """
 
-    X, Y = load_data(path)
+    images, masks = load_data(path)
 
-    split_size = int(len(X) * split)
+    split_size = int(len(images) * split)
 
-    train_x, test_x = train_test_split(X, test_size=split_size, random_state=42)
-    train_y, test_y = train_test_split(Y, test_size=split_size, random_state=42)
+    train_images, test_images = train_test_split(images, test_size=split_size, random_state=42)
+    train_masks, test_masks = train_test_split(masks, test_size=split_size, random_state=42)
 
-    return (train_x, train_y), (test_x, test_y)
+    return (train_images, train_masks), (test_images, test_masks)
 
 def augment_data(images: List[str], masks: List[str], save_path: str, cfg: DictConfig, augment: bool = True) -> None:
     """
     Аугментация изображений и масок.
 
-    Args:
-        images (List[str]): Список путей к изображениям.
-        masks (List[str]): Список путей к маскам.
-        save_path (str): Путь к директории для сохранения аугментированных данных.
-        cfg (DictConfig): Конфигурация аугментации.
-        augment (bool, optional): Флаг, указывающий, нужно ли выполнять аугментацию. 
-                                    По умолчанию True.
+    :param images: Список путей к изображениям.
+    :type images: List[str]
+    :param masks: Список путей к маскам.
+    :type masks: List[str]
+    :param save_path: Путь к директории для сохранения аугментированных данных.
+    :type save_path: str
+    :param cfg: Конфигурация аугментации.
+    :type cfg: DictConfig
+    :param augment: Флаг, указывающий, нужно ли выполнять аугментацию. 
+                    По умолчанию True.
+    :type augment: bool, optional
     """
 
-    def apply_augmentation(image: np.ndarray, mask: np.ndarray, aug: Callable) -> Tuple[np.ndarray, np.ndarray]:
+    def apply_augmentation(image: np.ndarray, mask: np.ndarray, augmentation: Callable) -> Tuple[np.ndarray, np.ndarray]:
         """
         Применяет аугментацию к изображению и маске.
 
-        Args:
-            image (np.ndarray): Изображение.
-            mask (np.ndarray): Маска.
-            aug (Callable): Функция аугментации.
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray]: Аугментированные изображение и маска.
+        :param image: Изображение.
+        :type image: np.ndarray
+        :param mask: Маска.
+        :type mask: np.ndarray
+        :param augmentation: Функция аугментации.
+        :type augmentation: Callable
+        :return: Аугментированные изображение и маска.
+        :rtype: Tuple[np.ndarray, np.ndarray]
         """
-        augmented = aug(image=image, mask=mask)
+        augmented = augmentation(image=image, mask=mask)
         return augmented["image"], augmented["mask"]
 
     def save_images(image: np.ndarray, mask: np.ndarray, name: str, index: int) -> None:
         """
         Сохраняет аугментированные изображения и маски.
 
-        Args:
-            image (np.ndarray): Изображение.
-            mask (np.ndarray): Маска.
-            name (str): Имя файла.
-            index (int): Индекс аугментации.
+        :param image: Изображение.
+        :type image: np.ndarray
+        :param mask: Маска.
+        :type mask: np.ndarray
+        :param name: Имя файла.
+        :type name: str
+        :param index: Индекс аугментации.
+        :type index: int
         """
         temp_image_name = f"{name}_{index}.png"
         temp_mask_name = f"{name}_{index}.png"
@@ -119,59 +130,79 @@ def augment_data(images: List[str], masks: List[str], save_path: str, cfg: DictC
         cv2.imwrite(image_path, image)
         cv2.imwrite(mask_path, mask)
 
-    def process_image(x: np.ndarray, y: np.ndarray, cfg: DictConfig) -> Tuple[np.ndarray, np.ndarray]:
+    def process_image(image: np.ndarray, mask: np.ndarray, cfg: DictConfig) -> Tuple[np.ndarray, np.ndarray]:
         """
         Обрабатывает изображение и маску: изменение размера или кадрирование.
 
-        Args:
-            x (np.ndarray): Изображение.
-            y (np.ndarray): Маска.
-            cfg (DictConfig): Конфигурация.
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray]: Обработанные изображение и маска.
+        :param image: Изображение.
+        :type image: np.ndarray
+        :param mask: Маска.
+        :type mask: np.ndarray
+        :param cfg: Конфигурация.
+        :type cfg: DictConfig
+        :return: Обработанные изображение и маска.
+        :rtype: Tuple[np.ndarray, np.ndarray]
         """
         try:
-            HEIGHT = cfg.resolution.HEIGHT
-            WIDTH = cfg.resolution.WIDTH
-            aug = CenterCrop(HEIGHT, WIDTH, p=1.0)
-            augmentation = aug(image=x, mask=y)
-            x, y = augmentation["image"], augmentation["mask"]
+            height = cfg.resolution.HEIGHT
+            width = cfg.resolution.WIDTH
+            crop_augmentation = CenterCrop(height, width, p=1.0)
+            augmentation = crop_augmentation(image=image, mask=mask)
+            image, mask = augmentation["image"], augmentation["mask"]
         except Exception as e:
-            x = cv2.resize(x, (WIDTH, HEIGHT))
-            y = cv2.resize(y, (WIDTH, HEIGHT))
-        return x, y
+            image = cv2.resize(image, (width, height))
+            mask = cv2.resize(mask, (width, height))
+        return image, mask
 
-    for x, y in tqdm(zip(images, masks), total=len(images)):
-        nameFile = os.path.basename(x).split(".")[0]
-        x, y = cv2.imread(x, cv2.IMREAD_COLOR), cv2.imread(y, cv2.IMREAD_COLOR)
+    for image_path, mask_path in tqdm(zip(images, masks), total=len(images)):
+        name_file = os.path.basename(image_path).split(".")[0]
+        image, mask = cv2.imread(image_path, cv2.IMREAD_COLOR), cv2.imread(mask_path, cv2.IMREAD_COLOR)
 
         if augment:
-            aug_1 = HorizontalFlip(p=1)
-            x1, y1 = apply_augmentation(x, y, aug_1)
+            augmented_images = []
+            augmented_masks = []
 
-            x2, y2 = cv2.cvtColor(x, cv2.COLOR_RGB2GRAY), y
+            # Horizontal Flip
+            flip_augmentation = HorizontalFlip(p=1)
+            flipped_image, flipped_mask = apply_augmentation(image, mask, flip_augmentation)
+            augmented_images.append(flipped_image)
+            augmented_masks.append(flipped_mask)
 
-            aug_3 = ChannelShuffle(p=1)
-            x3, y3 = apply_augmentation(x, y, aug_3)
+            # Grayscale
+            gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            augmented_images.append(gray_image)
+            augmented_masks.append(mask)
 
-            aug_4 = CoarseDropout(
+            # Channel Shuffle
+            shuffle_augmentation = ChannelShuffle(p=1)
+            shuffled_image, shuffled_mask = apply_augmentation(image, mask, shuffle_augmentation)
+            augmented_images.append(shuffled_image)
+            augmented_masks.append(shuffled_mask)
+
+            # Coarse Dropout
+            dropout_augmentation = CoarseDropout(
                 p=1, min_holes=3, max_holes=10, max_height=32, max_width=32
             )
-            x4, y4 = apply_augmentation(x, y, aug_4)
+            dropout_image, dropout_mask = apply_augmentation(image, mask, dropout_augmentation)
+            augmented_images.append(dropout_image)
+            augmented_masks.append(dropout_mask)
 
-            aug_5 = Rotate(limit=45, p=1.0)
-            x5, y5 = apply_augmentation(x, y, aug_5)
+            # Rotate
+            rotate_augmentation = Rotate(limit=45, p=1.0)
+            rotated_image, rotated_mask = apply_augmentation(image, mask, rotate_augmentation)
+            augmented_images.append(rotated_image)
+            augmented_masks.append(rotated_mask)
 
-            X = [x, x1, x2, x3, x4, x5]
-            Y = [y, y1, y2, y3, y4, y5]
+            # Add original image and mask
+            augmented_images.append(image)
+            augmented_masks.append(mask)
 
         else:
-            X = [x]
-            Y = [y]
+            augmented_images = [image]
+            augmented_masks = [mask]
 
         index = 0
-        for image, mask in zip(X, Y):
+        for image, mask in zip(augmented_images, augmented_masks):
             image, mask = process_image(image, mask, cfg)
-            save_images(image, mask, nameFile, index)
+            save_images(image, mask, name_file, index)
             index += 1
