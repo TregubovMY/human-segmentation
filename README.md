@@ -1,38 +1,62 @@
-# Human-Segmentation
+## Проект: Сегментация человека
 
-## Tools used in this project
+Этот проект предоставляет инструменты для сегментации человека с использованием различных архитектур глубокого обучения, таких как DeepLabv3+, U-Net и U^2-Net.
 
-* [Poetry](https://towardsdatascience.com/how-to-effortlessly-publish-your-python-package-to-pypi-using-poetry-44b305362f9f): Dependency management - [article](https://mathdatasimplified.com/2023/06/12/poetry-a-better-way-to-manage-python-dependencies/)
-* [hydra](https://hydra.cc/): Manage configuration files - [article](https://mathdatasimplified.com/2023/05/25/stop-hard-coding-in-a-data-science-project-use-configuration-files-instead/)
-* [sphinx](https://github.com/sphinx-doc/sphinx): The Sphinx documentation generator
+**Модули:**
 
-## Set up the environment
+* **Обработка данных:** Подготовка и аугментация наборов данных для сегментации человека.
+* **Обучение моделей:** Обучение моделей DeepLabv3+, U-Net и U^2-Net на подготовленных наборах данных.
+* **Валидация:** Оценка производительности обученных моделей.
+* **Визуализация:** Визуализация результатов сегментации.
+* **Документация:** Предоставление подробной документации по проекту и его API.
 
-1. Install [Poetry](https://python-poetry.org/docs/#installation)
-2. Set up the environment:
+**Установка:**
 
+1. **Создайте виртуальную среду:**
+   ```bash
+   make env
+   ```
+2. **Установите зависимости:**
+   ```bash
+   make dependencies
+   ```
+
+**Использование:**
+
+**Важно:** Все скрипты проекта должны запускаться **внутри активированной виртуальной среды**. Для активации виртуальной среды используйте команду:
 ```bash
-make env
+make shell
 ```
 
-## Install dependencies
+**Все параметры скриптов настраиваются в папке с конфигурацией Hydra (`/config/`).** 
 
-To install all dependencies for this project, run:
+**Запуск скриптов:**
 
-```bash
-poetry install
-```
+* **Обработка данных:**
+    ```bash
+    make data_proc
+    ```
+* **Обучение:**
+    ```bash
+    make train
+    ```
+* **Валидация:**
+    ```bash
+    make valid
+    ```
+* **Визуализация:**
+    ```bash
+    make visual
+    ```
 
-To install a new package, run:
+**Документация:**
 
-```bash
-poetry add <package-name>
-```
-
-## Auto-generate API documentation
-
-To auto-generate API document for your project, run:
+Документация по этому проекту находится в папке `docs`. Вы можете создать документацию с помощью:
 
 ```bash
 make docs
 ```
+
+**Лицензия:**
+
+Этот проект лицензирован под лицензией MIT.
