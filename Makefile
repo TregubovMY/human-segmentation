@@ -17,3 +17,16 @@ clean:
 
 docs:
 	$(MAKE) -C docs livehtml
+
+data_proc:
+	python -m src.models.deeplabv3plus
+
+train:
+	python -m src.trainer.train
+
+valid:
+	python -m src.validations.validation
+
+visual:
+	python -m src.visualization.visualization_main
+	

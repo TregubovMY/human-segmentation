@@ -8,6 +8,8 @@ from ..models.u_net import model_U_Net
 import hydra
 from omegaconf import DictConfig
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 # Словарь для связывания имен моделей с функциями загрузки
 MODEL_LOADERS = {
     "model_u_net": model_U_Net,
@@ -16,6 +18,7 @@ MODEL_LOADERS = {
     "model_u2_net_lite": model_U2_Net_lite,
 }
 
+@hydra.main(config_path="../../config", config_name="main", version_base=None)
 def main(cfg: DictConfig) -> None:
     """
     Главная функция, которая выполняет сегментацию изображений или видео.

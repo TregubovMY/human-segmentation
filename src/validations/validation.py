@@ -109,3 +109,6 @@ def val(cfg: DictConfig):
     print(f"Recall: {score[3]:0.5f}")
     print(f"Precision: {score[4]:0.5f}")
     writer.writerow(["Average", score[0], score[1], score[2], score[3], score[4]])
+
+if __name__ == "__main__":
+    val()
