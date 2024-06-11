@@ -5,65 +5,107 @@ import numpy as np
 import cv2
 from omegaconf import DictConfig
 import requests
+from typing import Optional
+import tensorflow as tf
 
+def download_and_read_image(url: str) -> Optional[np.ndarray]:
+    """
+    Загружает изображение по URL и преобразует его в массив NumPy.
 
-def download_and_read_image(url):
+    :param url: URL изображения.
+    :type url: str
+    :return: Изображение в виде массива NumPy или None, если загрузка не удалась.
+    :rtype: Optional[np.ndarray]
+    """
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            # Чтение изображения в формате numpy array
             image = np.asarray(bytearray(response.content), dtype="uint8")
             image = cv2.imdecode(image, cv2.IMREAD_COLOR)
             return image
         else:
-            print(
-                "Не удалось загрузить изображение. Код состояния:", response.status_code
-            )
+            print(f"Не удалось загрузить изображение. Код состояния: {response.status_code}")
             return None
     except Exception as e:
-        print("Произошла ошибка:", e)
+        print(f"Произошла ошибка: {e}")
         return None
     
 
-def save(image, save_dir_name):
-    cv2.imwrite(save_dir_name, image)
+def save(image: np.ndarray, save_path: str) -> None:
+    """
+    Сохраняет изображение в файл.
+
+    :param image: Изображение для сохранения.
+    :type image: np.ndarray
+    :param save_path: Путь к файлу для сохранения.
+    :type save_path: str
+    """
+    cv2.imwrite(save_path, image)
 
 
-def predict(image, model, cfg: DictConfig):
-    HEIGHT = cfg.resolution.HEIGHT
-    WIDTH = cfg.resolution.WIDTH
-    h, w, _ = image.shape
-    x = cv2.resize(image, (WIDTH, HEIGHT))
-    x = x / 255.0
-    x = x.astype(np.float32)
-    x = np.expand_dims(x, axis=0)
+def predict(image: np.ndarray, model: tf.keras.Model, cfg: DictConfig) -> np.ndarray:
+    """
+    Выполняет предсказание маски для изображения с использованием заданной модели.
+
+    :param image: Изображение для сегментации.
+    :type image: np.ndarray
+    :param model: Модель для сегментации.
+    :type model: tf.keras.Model
+    :param cfg: Конфигурация, содержащая информацию о моделях и разрешении изображения.
+    :type cfg: DictConfig
+    :return: Предсказанная маска.
+    :rtype: np.ndarray
+    """
+    height = cfg.resolution.HEIGHT
+    width = cfg.resolution.WIDTH
+    original_height, original_width, _ = image.shape
+    image = cv2.resize(image, (width, height))
+    image = image / 255.0
+    image = image.astype(np.float32)
+    image = np.expand_dims(image, axis=0)
 
     """ Предсказание """
-    y = model.predict(x, verbose=0)
+    prediction = model.predict(image, verbose=0)
 
     # Проверка, является ли модель U2-Net
-    if isinstance(y, list):
-        y = y[0][0]
+    if isinstance(prediction, list):
+        prediction = prediction[0][0]
     else:
-        y = y[0]
+        prediction = prediction[0]
 
-    y = cv2.resize(y, (w, h))
-    y = np.expand_dims(y, axis=-1)
+    prediction = cv2.resize(prediction, (original_width, original_height))
+    prediction = np.expand_dims(prediction, axis=-1)
 
-    return y
+    return prediction
 
 
-def masked_image(image, y):
-    h, _, _ = image.shape
-    masked_image = image * y
+def masked_image(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """
+    Создает изображение с наложенной маской.
 
+    :param image: Оригинальное изображение.
+    :type image: np.ndarray
+    :param mask: Маска для наложения.
+    :type mask: np.ndarray
+    :return: Изображение с наложенной маской.
+    :rtype: np.ndarray
+    """
+    masked_image = image * mask
     return masked_image
 
 
-def result_image_with_mask(image, masked_image):
-    h, _, _ = image.shape
-    line = np.ones((h, 10, 3)) * 255
-    cat_images = np.concatenate([image, line, masked_image], axis=1)
+def result_image_with_mask(image: np.ndarray, masked_image: np.ndarray) -> np.ndarray:
+    """
+    Создает изображение, содержащее исходное изображение, разделительную линию и изображение с наложенной маской.
 
-    return cat_images
-
+    :param image: Оригинальное изображение.
+    :type image: np.ndarray
+    :param masked_image: Изображение с наложенной маской.
+    :type masked_image: np.ndarray
+    :return: Изображение, содержащее исходное изображение, разделительную линию и изображение с наложенной маской.
+    :rtype: np.ndarray
+    """
+    height, _, _ = image.shape
+    line = np.ones((height, 10, 3)) * 255
+    concatenated_images = np.concatenate([image, line, masked_image], axis=1)
+    return concatenated_images

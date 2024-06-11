@@ -16,12 +16,15 @@ MODEL_LOADERS = {
     "model_u2_net_lite": model_U2_Net_lite,
 }
 
-@hydra.main(config_path="../../config", config_name="main", version_base=None)
-def main(cfg: DictConfig):
+def main(cfg: DictConfig) -> None:
     """
-    Выполняет сегментацию изображений или видео.
-    """
+    Главная функция, которая выполняет сегментацию изображений или видео.
 
+    :param cfg: Конфигурация для сегментации.
+    :type cfg: DictConfig
+    :return: None
+    """
+    
     # Разбор аргументов командной строки для переопределения конфигурации
     parser = argparse.ArgumentParser(
         description="Сегментация изображений и видео",

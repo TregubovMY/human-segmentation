@@ -2,9 +2,26 @@ from .tools import *
 import tensorflow as tf
 from tqdm import tqdm
 from glob import glob
+from typing import List
+from omegaconf import DictConfig
 
-def apply_mask(image, mask, mode="multiply"):
-    """Applies the mask to the image based on the specified mode."""
+def apply_mask(image: np.ndarray, mask: np.ndarray, mode: str = "multiply") -> np.ndarray:
+    """
+    Применяет маску к изображению в соответствии с указанным режимом.
+
+    :param image: Оригинальное изображение.
+    :type image: np.ndarray
+    :param mask: Маска для применения.
+    :type mask: np.ndarray
+    :param mode: Режим применения маски:
+        - "multiply": умножает изображение на маску.
+        - "concatenate": соединяет изображение и маску горизонтально.
+        - "concatenate_multiplied": соединяет изображение, маску и результат умножения горизонтально.
+        - По умолчанию: возвращает только маску.
+    :type mode: str, optional
+    :return: Изображение с примененной маской.
+    :rtype: np.ndarray
+    """
     if mode == "multiply":
         return image * mask
     elif mode == "concatenate":
@@ -16,14 +33,29 @@ def apply_mask(image, mask, mode="multiply"):
     else:
         return mask  # Default: Return only the mask
 
-def present_results_on_models(dir_images, save_dir, models, cfg: DictConfig, output_mode="multiply"):
-    """Seeding"""
+def present_results_on_models(dir_images: str, save_dir: str, models: List[tf.keras.Model], cfg: DictConfig, output_mode: str = "multiply") -> None:
+    """
+    Представляет результаты сегментации для нескольких моделей на изображениях из указанной директории.
+
+    :param dir_images: Путь к директории с изображениями.
+    :type dir_images: str
+    :param save_dir: Путь к директории для сохранения результатов.
+    :type save_dir: str
+    :param models: Список моделей для сегментации.
+    :type models: List[tf.keras.Model]
+    :param cfg: Конфигурация, содержащая информацию о моделях и разрешении изображения.
+    :type cfg: DictConfig
+    :param output_mode: Режим применения маски (см. функцию `apply_mask`). 
+                        По умолчанию "multiply".
+    :type output_mode: str, optional
+    """
+    """ Настройка зерна случайных чисел """
     np.random.seed(42)
     tf.random.set_seed(42)
 
-    for path in tqdm(glob(os.path.join(dir_images, "*"))):
-        name = os.path.basename(path).split(".")[0]
-        image = cv2.imread(path, cv2.IMREAD_COLOR)
+    for image_path in tqdm(glob(os.path.join(dir_images, "*"))):
+        name = os.path.basename(image_path).split(".")[0]
+        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
 
         images = [image]
         for model in models:
@@ -32,18 +64,27 @@ def present_results_on_models(dir_images, save_dir, models, cfg: DictConfig, out
             images.append(masked_img)
 
         result_img = np.concatenate(images, axis=1)
-        save_dir_name = os.path.join(save_dir, f"{name}_all_models.png")
-        save(result_img, save_dir_name)
+        save_path = os.path.join(save_dir, f"{name}_all_models.png")
+        save(result_img, save_path)
 
 
+def show_pred_image(image: np.ndarray, model: tf.keras.Model) -> None:
+    """
+    Отображает предсказанную маску на изображении.
 
-def show_pred_image(image, model):
+    :param image: Изображение для сегментации.
+    :type image: np.ndarray
+    :param model: Модель для сегментации.
+    :type model: tf.keras.Model
+    """
     if image is not None:
         y = predict(image, model)
         h, _, _ = image.shape
         masked_image = image * y
         line = np.ones((h, 10, 3)) * 128
         cat_images = np.concatenate([image, line, masked_image], axis=1)
-        cv2.imshow(cat_images)
+        cv2.imshow("Prediction", cat_images)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     else:
         print("Изображение не загружено.")
