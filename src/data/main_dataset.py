@@ -1,11 +1,21 @@
 import os
-from .data_processing import *
-import numpy as np
+
 import hydra
-from ..utils.utils import folder_path, create_dir 
+import numpy as np
+from omegaconf import DictConfig
+
+from ..utils.utils import create_dir, folder_path
+from .data_processing import augment_data, split_dataset
 
 @hydra.main(config_path="./../../config", config_name="main", version_base=None)
-def main_dataset(cfg: DictConfig):
+def main_dataset(cfg: DictConfig) -> None:
+    """
+    Основная функция для обработки и аугментации набора данных.
+
+    Args:
+        cfg (DictConfig): Конфигурация, загруженная с помощью Hydra.
+    """
+
     # Получаем путь к верхнему каталогу
     base_dir = folder_path()
     data_raw = os.path.join(base_dir, cfg.data.raw)
