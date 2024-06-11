@@ -1,21 +1,30 @@
 import os
+from typing import Tuple
 
 import tensorflow as tf
 from keras.layers import Input, Conv2D, MaxPooling2D, ReLU
 from keras.layers import BatchNormalization, Conv2DTranspose, Concatenate
 from keras.models import Model
 from keras.utils import CustomObjectScope
-from ..metrics.metrics import *
+
+from ..metrics.metrics import iou, dice_coef, dice_loss
 from ..utils.utils import folder_path
 
-# Сверточный слой
-def convolution_operation(entered_input, filters=64):
-    """Реализуем первый блок conv"""
+def convolution_operation(entered_input: tf.Tensor, filters: int = 64) -> tf.Tensor:
+    """
+    Реализует двойной сверточный блок с BatchNormalization и ReLU активацией.
+
+    :param entered_input: Входной тензор.
+    :type entered_input: tf.Tensor
+    :param filters: Количество фильтров в сверточных слоях. По умолчанию 64.
+    :type filters: int, optional
+    :return: Выходной тензор после двойной свертки.
+    :rtype: tf.Tensor
+    """
     conv1 = Conv2D(filters, kernel_size=(3, 3), padding="same")(entered_input)
     batch_norm1 = BatchNormalization()(conv1)
     act1 = ReLU()(batch_norm1)
 
-    """Реализуем второй блок conv"""
     conv2 = Conv2D(filters, kernel_size=(3, 3), padding="same")(act1)
     batch_norm2 = BatchNormalization()(conv2)
     act2 = ReLU()(batch_norm2)
@@ -23,40 +32,64 @@ def convolution_operation(entered_input, filters=64):
     return act2
 
 
-def encoder(entered_input, filters=64):
-    """Вызываем двойную свертку, макспулинг и верном оба для последующего
-    использования в decodere"""
-    enc1 = convolution_operation(entered_input, filters)
-    maxPool1 = MaxPooling2D(strides=(2, 2))(enc1)
+def encoder(entered_input: tf.Tensor, filters: int = 64) -> Tuple[tf.Tensor, tf.Tensor]:
+    """
+    Реализует блок энкодера U-Net.
 
-    return enc1, maxPool1
+    :param entered_input: Входной тензор.
+    :type entered_input: tf.Tensor
+    :param filters: Количество фильтров в сверточном блоке. По умолчанию 64.
+    :type filters: int, optional
+    :return: Кортеж из двух тензоров: выход сверточного блока и выход MaxPooling.
+    :rtype: Tuple[tf.Tensor, tf.Tensor]
+    """
+    enc = convolution_operation(entered_input, filters)
+    max_pool = MaxPooling2D(strides=(2, 2))(enc)
+
+    return enc, max_pool
 
 
-def decoder(entered_input, skip, filters=64):
-    """Повышаем дискретизацию и объединяем слои [[a11..a1n, b11..b1n],..]"""
+def decoder(entered_input: tf.Tensor, skip: tf.Tensor, filters: int = 64) -> tf.Tensor:
+    """
+    Реализует блок декодера U-Net.
+
+    :param entered_input: Входной тензор.
+    :type entered_input: tf.Tensor
+    :param skip: Тензор skip-соединения из энкодера.
+    :type skip: tf.Tensor
+    :param filters: Количество фильтров в сверточном блоке. По умолчанию 64.
+    :type filters: int, optional
+    :return: Выходной тензор после декодирования.
+    :rtype: tf.Tensor
+    """
     upsample = Conv2DTranspose(filters, kernel_size=(2, 2), strides=2, padding="same")(
         entered_input
     )
-    connect_Skip = Concatenate()([upsample, skip])
-    out = convolution_operation(connect_Skip, filters)
+    connect_skip = Concatenate()([upsample, skip])
+    out = convolution_operation(connect_skip, filters)
 
     return out
 
 
-def U_Net(image_size = (512, 512, 3)):
-    """Берем размеры и форму изображения"""
-    input_1 = Input(image_size)
+def U_Net(image_size: Tuple[int, int, int] = (512, 512, 3)) -> Model:
+    """
+    Создает модель U-Net для сегментации изображений.
 
-    """Создаем блоки энкодера"""
-    skip_1, encoder_1 = encoder(input_1, 64)
+    :param image_size: Размер входного изображения (высота, ширина, каналы). 
+                       По умолчанию (512, 512, 3).
+    :type image_size: Tuple[int, int, int], optional
+    :return: Модель U-Net.
+    :rtype: Model
+    """
+    input_layer = Input(image_size)
+
+    skip_1, encoder_1 = encoder(input_layer, 64)
     skip_2, encoder_2 = encoder(encoder_1, 64 * 2)
     skip_3, encoder_3 = encoder(encoder_2, 64 * 4)
     skip_4, encoder_4 = encoder(encoder_3, 64 * 8)
 
-    """Создаем блок перед декодером"""
     conv_block = convolution_operation(encoder_4, 64 * 16)
 
-    """Создаем блоки декодера"""
     decoder_1 = decoder(conv_block, skip_4, 64 * 8)
     decoder_2 = decoder(decoder_1, skip_3, 64 * 4)
     decoder_3 = decoder(decoder_2, skip_2, 64 * 2)
@@ -64,12 +97,18 @@ def U_Net(image_size = (512, 512, 3)):
 
     out = Conv2D(1, 1, padding="same", activation="sigmoid")(decoder_4)
 
-    model = Model(input_1, out)
+    model = Model(input_layer, out)
 
     return model
 
 
-def model_U_Net():
+def model_U_Net() -> Model:
+    """
+    Загружает модель U-Net из файла, если он существует, иначе создает новую модель.
+
+    :return: Модель U-Net.
+    :rtype: Model
+    """
     model_name = "U-Net"
     model_path = os.path.join(folder_path(), "models", "u_net.h5")
 
