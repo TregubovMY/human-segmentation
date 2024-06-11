@@ -154,55 +154,36 @@ def augment_data(images: List[str], masks: List[str], save_path: str, cfg: DictC
             mask = cv2.resize(mask, (width, height))
         return image, mask
 
-    for image_path, mask_path in tqdm(zip(images, masks), total=len(images)):
-        name_file = os.path.basename(image_path).split(".")[0]
-        image, mask = cv2.imread(image_path, cv2.IMREAD_COLOR), cv2.imread(mask_path, cv2.IMREAD_COLOR)
+    for x, y in tqdm(zip(images, masks), total=len(images)):
+        nameFile = os.path.basename(x).split(".")[0]
+        x, y = cv2.imread(x, cv2.IMREAD_COLOR), cv2.imread(y, cv2.IMREAD_COLOR)
 
         if augment:
-            augmented_images = []
-            augmented_masks = []
+            aug_1 = HorizontalFlip(p=1)
+            x1, y1 = apply_augmentation(x, y, aug_1)
 
-            # Horizontal Flip
-            flip_augmentation = HorizontalFlip(p=1)
-            flipped_image, flipped_mask = apply_augmentation(image, mask, flip_augmentation)
-            augmented_images.append(flipped_image)
-            augmented_masks.append(flipped_mask)
+            x2, y2 = cv2.cvtColor(x, cv2.COLOR_RGB2GRAY), y
 
-            # Grayscale
-            gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-            augmented_images.append(gray_image)
-            augmented_masks.append(mask)
+            aug_3 = ChannelShuffle(p=1)
+            x3, y3 = apply_augmentation(x, y, aug_3)
 
-            # Channel Shuffle
-            shuffle_augmentation = ChannelShuffle(p=1)
-            shuffled_image, shuffled_mask = apply_augmentation(image, mask, shuffle_augmentation)
-            augmented_images.append(shuffled_image)
-            augmented_masks.append(shuffled_mask)
-
-            # Coarse Dropout
-            dropout_augmentation = CoarseDropout(
+            aug_4 = CoarseDropout(
                 p=1, min_holes=3, max_holes=10, max_height=32, max_width=32
             )
-            dropout_image, dropout_mask = apply_augmentation(image, mask, dropout_augmentation)
-            augmented_images.append(dropout_image)
-            augmented_masks.append(dropout_mask)
+            x4, y4 = apply_augmentation(x, y, aug_4)
 
-            # Rotate
-            rotate_augmentation = Rotate(limit=45, p=1.0)
-            rotated_image, rotated_mask = apply_augmentation(image, mask, rotate_augmentation)
-            augmented_images.append(rotated_image)
-            augmented_masks.append(rotated_mask)
+            aug_5 = Rotate(limit=45, p=1.0)
+            x5, y5 = apply_augmentation(x, y, aug_5)
 
-            # Add original image and mask
-            augmented_images.append(image)
-            augmented_masks.append(mask)
+            X = [x, x1, x2, x3, x4, x5]
+            Y = [y, y1, y2, y3, y4, y5]
 
         else:
-            augmented_images = [image]
-            augmented_masks = [mask]
+            X = [x]
+            Y = [y]
 
         index = 0
-        for image, mask in zip(augmented_images, augmented_masks):
+        for image, mask in zip(X, Y):
             image, mask = process_image(image, mask, cfg)
-            save_images(image, mask, name_file, index)
+            save_images(image, mask, nameFile, index)
             index += 1
