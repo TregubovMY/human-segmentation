@@ -16,7 +16,6 @@ from keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPlateau, Early
 from keras.optimizers import Adam
 from keras.metrics import Recall, Precision
 import numpy as np
-import cv2
 
 MODEL_FUNCTIONS = {
     "u_net": model_U_Net,
@@ -25,6 +24,7 @@ MODEL_FUNCTIONS = {
     "deepLabV3_plus": model_deepLabV3_plus,
 }
 
+"""Словарь, связывающий названия моделей с соответствующими функциями потерь."""
 LOSS_FUNCTION = {
     "u_net": dice_loss,
     "u2_net": "binary_crossentropy",
@@ -34,7 +34,14 @@ LOSS_FUNCTION = {
 
 @hydra.main(config_path="../../config", config_name="main", version_base=None)
 def main_train(cfg: DictConfig):
-    """ Seeding """
+    """
+    Инициализирует и запускает процесс обучения модели сегментации, используя конфигурацию Hydra.
+
+    :param cfg: Конфигурация Hydra, содержащая параметры обучения, загруженные из файла конфигурации.
+    :type cfg: DictConfig
+    """
+
+    """ Настройка зерна случайных чисел """
     np.random.seed(42)
     tf.random.set_seed(42)
 
@@ -69,6 +76,7 @@ def main_train(cfg: DictConfig):
 
     """ Модель """
     model = model_function()
+    """Компилируем модель с заданной функцией потерь, оптимизатором и метриками."""
     model.compile(loss=LOSS_FUNCTION[model_name], optimizer=Adam(lr), metrics=[dice_coef, iou, Recall(), Precision()])
 
     """ Тренеровка """
