@@ -1,8 +1,6 @@
 .PHONY: dependencies env clean docs
 
 dependencies:
-	@echo "Initializing Git..."
-	git init
 	@echo "Installing dependencies..."
 	poetry install
 	@echo "Initializing pre-commit..."
@@ -10,10 +8,6 @@ dependencies:
 env: dependencies
 	@echo "Activating virtual environment..."
 	poetry shell
-
-dvc:
-	@echo "Initializing dvc..."
-	dvc init
 
 clean:
 	$(MAKE) -C docs clean

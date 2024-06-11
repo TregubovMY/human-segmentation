@@ -1,5 +1,4 @@
 import os
-import sys
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import tensorflow as tf
@@ -16,42 +15,42 @@ from keras.layers import (
 from keras.models import Model
 from src.utils.utils import folder_path
 import os
-
+from keras.utils import CustomObjectScope
+from ..metrics.metrics import *
 
 def conv_block(inputs, out_ch, rate=1):
-    x = Conv2D(out_ch, 3, padding="same", dilation_rate=rate)(inputs)
+    x = Conv2D(out_ch, 3, padding="same", dilation_rate=1)(inputs)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
     return x
 
-
 def RSU_L(inputs, out_ch, int_ch, num_layers, rate=2):
-    """Начальная свертка Conv"""
+    """ Initial Conv """
     x = conv_block(inputs, out_ch)
     init_feats = x
 
-    """ Энкодер """
+    """ Encoder """
     skip = []
     x = conv_block(x, int_ch)
     skip.append(x)
 
-    for i in range(num_layers - 2):
+    for i in range(num_layers-2):
         x = MaxPool2D((2, 2))(x)
         x = conv_block(x, int_ch)
         skip.append(x)
 
-    """ Мост """
+    """ Bridge """
     x = conv_block(x, int_ch, rate=rate)
 
-    """ Декодер """
+    """ Decoder """
     skip.reverse()
 
     x = Concatenate()([x, skip[0]])
     x = conv_block(x, int_ch)
 
-    for i in range(num_layers - 3):
+    for i in range(num_layers-3):
         x = UpSampling2D(size=(2, 2), interpolation="bilinear")(x)
-        x = Concatenate()([x, skip[i + 1]])
+        x = Concatenate()([x, skip[i+1]])
         x = conv_block(x, int_ch)
 
     x = UpSampling2D(size=(2, 2), interpolation="bilinear")(x)
@@ -62,20 +61,19 @@ def RSU_L(inputs, out_ch, int_ch, num_layers, rate=2):
     x = Add()([x, init_feats])
     return x
 
-
 def RSU_4F(inputs, out_ch, int_ch):
-    """Начальная свертка Conv"""
+    """ Initial Conv """
     x0 = conv_block(inputs, out_ch, rate=1)
 
-    """ Энкодер """
+    """ Encoder """
     x1 = conv_block(x0, int_ch, rate=1)
     x2 = conv_block(x1, int_ch, rate=2)
     x3 = conv_block(x2, int_ch, rate=4)
 
-    """ Мост """
+    """ Bridge """
     x4 = conv_block(x3, int_ch, rate=8)
 
-    """ Декодер """
+    """ Decoder """
     x = Concatenate()([x4, x3])
     x = conv_block(x, int_ch, rate=4)
 
@@ -89,64 +87,82 @@ def RSU_4F(inputs, out_ch, int_ch):
     x = Add()([x, x0])
     return x
 
-
-def RSU_block(x, out_ch, int_ch, num_blocks):
-    if num_blocks == 3:
-        return RSU_4F(x, out_ch, int_ch)
-    else:
-        return RSU_L(x, out_ch, int_ch, num_blocks)
-
-
-def concatenate_and_rsu(u, s, out_ch, int_ch, num_blocks):
-    d = Concatenate()([u, s])
-    d = RSU_block(d, out_ch, int_ch, num_blocks)
-    return d
-
-
 def u2net(input_shape, out_ch, int_ch, num_classes=1):
-    """Входной слой"""
+    """ Input Layer """
     inputs = Input(input_shape)
+    s0 = inputs
 
-    """ Энкодер """
-    s = []
-    pool_layer = inputs
+    """ Encoder """
+    s1 = RSU_L(s0, out_ch[0], int_ch[0], 7)
+    p1 = MaxPool2D((2, 2))(s1)
 
-    for i in range(5):
-        s.append(RSU_block(pool_layer, out_ch[i], int_ch[i], 7 - i))
-        pool_layer = MaxPool2D((2, 2))(s[i])
+    s2 = RSU_L(p1, out_ch[1], int_ch[1], 6)
+    p2 = MaxPool2D((2, 2))(s2)
 
-    """ Мост """
-    b1 = RSU_4F(pool_layer, out_ch[5], int_ch[5])
+    s3 = RSU_L(p2, out_ch[2], int_ch[2], 5)
+    p3 = MaxPool2D((2, 2))(s3)
+
+    s4 = RSU_L(p3, out_ch[3], int_ch[3], 4)
+    p4 = MaxPool2D((2, 2))(s4)
+
+    s5 = RSU_4F(p4, out_ch[4], int_ch[4])
+    p5 = MaxPool2D((2, 2))(s5)
+
+    """ Bridge """
+    b1 = RSU_4F(p5, out_ch[5], int_ch[5])
     b2 = UpSampling2D(size=(2, 2), interpolation="bilinear")(b1)
 
-    """ Декодер """
-    upsample_layers = []
-    u = b2
-    for i in range(5):
-        upsample_layers.append(
-            concatenate_and_rsu(u, s[-1 - i], out_ch[6 + i], int_ch[6 + i], 3 + i)
-        )
-        u = UpSampling2D(size=(2, 2), interpolation="bilinear")(upsample_layers[i])
+    """ Decoder """
+    d1 = Concatenate()([b2, s5])
+    d1 = RSU_4F(d1, out_ch[6], int_ch[6])
+    u1 = UpSampling2D(size=(2, 2), interpolation="bilinear")(d1)
 
-    upsample_layers = [b1] + upsample_layers
+    d2 = Concatenate()([u1, s4])
+    d2 = RSU_L(d2, out_ch[7], int_ch[7], 4)
+    u2 = UpSampling2D(size=(2, 2), interpolation="bilinear")(d2)
 
-    """ Выходной слой """
-    y = Conv2D(num_classes, 3, padding="same")(upsample_layers[-1])
-    side_outputs = [y]
+    d3 = Concatenate()([u2, s3])
+    d3 = RSU_L(d3, out_ch[8], int_ch[8], 5)
+    u3 = UpSampling2D(size=(2, 2), interpolation="bilinear")(d3)
 
-    for i in range(1, 6):
-        y = Conv2D(num_classes, 3, padding="same")(upsample_layers[-1 - i])
-        y = UpSampling2D(size=(2**i, 2**i), interpolation="bilinear")(y)
-        side_outputs.append(y)
+    d4 = Concatenate()([u3, s2])
+    d4 = RSU_L(d4, out_ch[9], int_ch[9], 6)
+    u4 = UpSampling2D(size=(2, 2), interpolation="bilinear")(d4)
 
-    """ Финальный слой """
-    final_output = Concatenate()(side_outputs)
-    final_output = Conv2D(num_classes, 3, padding="same")(final_output)
-    final_output = Activation("sigmoid")(final_output)
+    d5 = Concatenate()([u4, s1])
+    d5 = RSU_L(d5, out_ch[10], int_ch[10], 7)
 
-    side_outputs = [Activation("sigmoid")(layer) for layer in side_outputs]
+    """ Side Outputs """
+    y1 = Conv2D(num_classes, 3, padding="same")(d5)
 
-    return Model(inputs, outputs=final_output)
+    y2 = Conv2D(num_classes, 3, padding="same")(d4)
+    y2 = UpSampling2D(size=(2, 2), interpolation="bilinear")(y2)
+
+    y3 = Conv2D(num_classes, 3, padding="same")(d3)
+    y3 = UpSampling2D(size=(4, 4), interpolation="bilinear")(y3)
+
+    y4 = Conv2D(num_classes, 3, padding="same")(d2)
+    y4 = UpSampling2D(size=(8, 8), interpolation="bilinear")(y4)
+
+    y5 = Conv2D(num_classes, 3, padding="same")(d1)
+    y5 = UpSampling2D(size=(16, 16), interpolation="bilinear")(y5)
+
+    y6 = Conv2D(num_classes, 3, padding="same")(b1)
+    y6 = UpSampling2D(size=(32, 32), interpolation="bilinear")(y6)
+
+    y0 = Concatenate()([y1, y2, y3, y4, y5, y6])
+    y0 = Conv2D(num_classes, 3, padding="same")(y0)
+
+    y0 = Activation("sigmoid", name="y0")(y0)
+    y1 = Activation("sigmoid", name="y1")(y1)
+    y2 = Activation("sigmoid", name="y2")(y2)
+    y3 = Activation("sigmoid", name="y3")(y3)
+    y4 = Activation("sigmoid", name="y4")(y4)
+    y5 = Activation("sigmoid", name="y5")(y5)
+    y6 = Activation("sigmoid", name="y6")(y6)
+
+    model = tf.keras.models.Model(inputs, outputs=[y0, y1, y2, y3, y4, y5, y6])
+    return model
 
 def build_u2net(input_shape = (512, 512, 3), num_classes=1):
     out_ch = [64, 128, 256, 512, 512, 512, 512, 256, 128, 64, 64]
@@ -154,7 +170,7 @@ def build_u2net(input_shape = (512, 512, 3), num_classes=1):
     model = u2net(input_shape, out_ch, int_ch, num_classes=num_classes)
     return model
 
-def build_u2net_lite(input_shape = (512, 512, 3), num_classes=1):
+def build_u2net_lite(input_shape = (256, 256, 3), num_classes=1):
     out_ch = [64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64]
     int_ch = [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
     model = u2net(input_shape, out_ch, int_ch, num_classes=num_classes)
@@ -162,8 +178,28 @@ def build_u2net_lite(input_shape = (512, 512, 3), num_classes=1):
 
 
 def model_U2_Net():
-    model_path = os.path.join(folder_path(), "models", "model_u2_net.h5")
-    model = build_u2net()
-    model.load_weights(model_path)
+    model_name = "U2-Net"
+    model_path = os.path.join(folder_path(), "models", "u2_net.h5")
 
-    return model
+    if os.path.exists(model_path):
+        print(f"{model_name}: Файл с весами {model_name} найден.")
+        model = tf.keras.models.load_model(model_path)
+        print(f"{model_name}: Веса успешно загружены.")
+        return model
+    else:
+        print(f"{model_name}: Файл с весами не найден: {model_path}")
+        return build_u2net()
+
+def model_U2_Net_lite():
+    model_name = "U2-Net-Lite"
+    model_path = os.path.join(folder_path(), "models", "u2_net_lite.h5")
+
+    if os.path.exists(model_path):
+        print(f"{model_name}: Файл с весами {model_name} найден.")
+        with CustomObjectScope({'iou': iou, 'dice_coef': dice_coef}):
+            model = tf.keras.models.load_model(model_path)
+        print(f"{model_name}: Веса успешно загружены.")
+        return model
+    else:
+        print(f"{model_name}: Файл с весами не найден: {model_path}")
+        return build_u2net_lite()

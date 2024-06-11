@@ -1,8 +1,8 @@
 import os
-from data_processing import *
+from .data_processing import *
 import numpy as np
 import hydra
-from src.utils.utils import folder_path, create_dir 
+from ..utils.utils import folder_path, create_dir 
 
 @hydra.main(config_path="./../../config", config_name="main", version_base=None)
 def main_dataset(cfg: DictConfig):
@@ -25,7 +25,7 @@ def main_dataset(cfg: DictConfig):
         create_dir(data_final + "test\masks")
 
     # Флаг аугментации из конфигурации
-    augment = cfg.get("augment", True)  # Значение по умолчанию: True
+    augment = cfg.get("augment", False)
 
     if not os.listdir(data_final + "train\images"):
         """Data augmentation"""

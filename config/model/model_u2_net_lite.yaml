@@ -1,0 +1,8 @@
+name: "u2_net_lite"
+batch_size: 8
+lr: 1e-4
+num_epochs: 102
+
+# resolution:
+#   HEIGHT: 512
+#   WIDTH: 512

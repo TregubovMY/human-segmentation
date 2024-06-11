@@ -5,7 +5,8 @@ hydra:
 
 defaults:
   - process: process1
-  - model: model3
+  - model: model_u2_net
+  - visualization: vis
   - _self_
 
 data:
@@ -16,7 +17,7 @@ data:
   test: data\test\
   validation: data\validation\
 
-augment: True
+augment: False
 
 resolution:
   HEIGHT: 512

@@ -1,23 +1,10 @@
 import os
-import sys
-sys.path.insert(0, os.path.abspath("./src/metrics"))
-sys.path.insert(0, os.path.abspath("./src/utils"))
-sys.path.insert(0, os.path.abspath("./src/models"))
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import numpy as np
 import cv2
-import pandas as pd
-from glob import glob
-from tqdm import tqdm
-import tensorflow as tf
-from keras.utils import CustomObjectScope
 from omegaconf import DictConfig
-# import metrics.metrics as m
-# import utils as u
 import requests
-import u2_net
 
 
 def download_and_read_image(url):
@@ -52,7 +39,14 @@ def predict(image, model, cfg: DictConfig):
     x = np.expand_dims(x, axis=0)
 
     """ Предсказание """
-    y = model.predict(x)[0]
+    y = model.predict(x, verbose=0)
+
+    # Проверка, является ли модель U2-Net
+    if isinstance(y, list):
+        y = y[0][0]
+    else:
+        y = y[0]
+
     y = cv2.resize(y, (w, h))
     y = np.expand_dims(y, axis=-1)
 
@@ -68,7 +62,7 @@ def masked_image(image, y):
 
 def result_image_with_mask(image, masked_image):
     h, _, _ = image.shape
-    line = np.ones((h, 10, 3)) * 128
+    line = np.ones((h, 10, 3)) * 255
     cat_images = np.concatenate([image, line, masked_image], axis=1)
 
     return cat_images

@@ -26,7 +26,7 @@ clean:
 	-find $(SOURCEDIR) -name '*.rst' ! -name 'index.rst' -exec rm -rf {} +
 
 build:
-	sphinx-apidoc -o $(SOURCEDIR) "$(PROJECT)"
+	sphinx-apidoc -o $(SOURCEDIR) "$(PROJECT)/src"
 
 livehtml: build
-	sphinx-autobuild -b html $(SOURCEDIR) $(BUILDDIR)/html & start http://127.0.0.1:8000
+	sphinx-autobuild -b html --port 8888 $(SOURCEDIR) $(BUILDDIR)/html & start http://127.0.0.1:8888

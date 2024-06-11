@@ -3,7 +3,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import numpy as np
 import cv2
-from glob import glob
 import tensorflow as tf
 from omegaconf import DictConfig
 
@@ -11,40 +10,31 @@ def create_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-def load_dataset(path, split=0.1):
-    train_x = sorted(glob(os.path.join(path, "train", "blurred_image", "*.jpg")))
-    train_y = sorted(glob(os.path.join(path, "train", "mask", "*.png")))
-
-    valid_x = sorted(glob(os.path.join(path, "validation", "P3M-500-NP", "original_image", "*.jpg")))
-    valid_y = sorted(glob(os.path.join(path, "validation", "P3M-500-NP", "mask", "*.png")))
-
-    return (train_x, train_y), (valid_x, valid_y)
-
 def read_image(path, cfg: DictConfig):
-    HEIGHT = cfg.resolution.HEIGHT
-    WIDTH = cfg.resolution.WIDTH
     path = path.decode()
     x = cv2.imread(path, cv2.IMREAD_COLOR)
-    x = cv2.resize(x, (WIDTH, HEIGHT))
+    if cfg.model.name in ["u2_net", "u2_net_lite"]: # траблы
+        x = cv2.resize(x, (cfg.resolution.WIDTH, cfg.resolution.HEIGHT))
+
     x = x / 255.0
     x = x.astype(np.float32)
     return x
 
 def read_mask(path, cfg: DictConfig):
     path = path.decode()
-    HEIGHT = cfg.resolution.HEIGHT
-    WIDTH = cfg.resolution.WIDTH
     x = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    x = cv2.resize(x, (WIDTH, HEIGHT))
-    x = x / 255.0
+    if cfg.model.name in ["u2_net", "u2_net_lite"]:
+        x = cv2.resize(x, (cfg.resolution.WIDTH, cfg.resolution.HEIGHT))
+        x = x / 255.0
+
     x = x.astype(np.float32)
     x = np.expand_dims(x, axis=-1)
     return x
 
-def tf_parse(x, y, cfg: DictConfig):  # Передаем cfg как аргумент
+def tf_parse(x, y, cfg: DictConfig):
     def _parse(x, y):
-        x = read_image(x, cfg)  # Передаем cfg в read_image
-        y = read_mask(y, cfg)  # Передаем cfg в read_mask
+        x = read_image(x, cfg)
+        y = read_mask(y, cfg)
         return x, y
 
     HEIGHT = cfg.resolution.HEIGHT
@@ -72,7 +62,7 @@ def save_results(image, mask, y_pred, save_image_path):
 
     mask = np.expand_dims(mask, axis=-1)    ## (512, 512, 1)
     mask = np.concatenate([mask, mask, mask], axis=-1)  ## (512, 512, 3)
-    #   mask = mask * 255
+    # mask = mask * 255 # для некоторых решений это не нужно
 
     y_pred = np.expand_dims(y_pred, axis=-1)    ## (512, 512, 1)
     y_pred = np.concatenate([y_pred, y_pred, y_pred], axis=-1)  ## (512, 512, 3)

@@ -1,13 +1,12 @@
 import os
-import sys
 
 import tensorflow as tf
-from keras.layers import Input, Conv2D, MaxPooling2D, Activation, ReLU
+from keras.layers import Input, Conv2D, MaxPooling2D, ReLU
 from keras.layers import BatchNormalization, Conv2DTranspose, Concatenate
-from keras.models import Model, Sequential
+from keras.models import Model
 from keras.utils import CustomObjectScope
-from src.metrics.metrics import *
-from src.utils.utils import folder_path
+from ..metrics.metrics import *
+from ..utils.utils import folder_path
 
 # Сверточный слой
 def convolution_operation(entered_input, filters=64):
@@ -44,7 +43,7 @@ def decoder(entered_input, skip, filters=64):
     return out
 
 
-def U_Net(image_size):
+def U_Net(image_size = (512, 512, 3)):
     """Берем размеры и форму изображения"""
     input_1 = Input(image_size)
 
@@ -71,8 +70,16 @@ def U_Net(image_size):
 
 
 def model_U_Net():
-    models_path = os.path.join(folder_path(), "models")
-    with CustomObjectScope({'iou': iou, 'dice_coef': dice_coef, 'dice_loss': dice_loss}):
-        model = tf.keras.models.load_model(os.path.join(models_path,"model_u_net.h5"))
+    model_name = "U-Net"
+    model_path = os.path.join(folder_path(), "models", "u_net.h5")
 
-    return model
+    if os.path.exists(model_path):
+        print(f"{model_name}: Файл с весами {model_name} найден.")
+        with CustomObjectScope({'iou': iou, 'dice_coef': dice_coef, 'dice_loss': dice_loss}):
+             model = tf.keras.models.load_model(model_path)
+        print(f"{model_name}: Веса успешно загружены.")
+        return model
+
+    else:
+        print(f"{model_name}: Файл с весами не найден: {model_path}")
+        return U_Net()

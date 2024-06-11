@@ -108,3 +108,6 @@ outputs
 # md file
 to-do.md
 info.md
+
+# Docs
+src*.rst
