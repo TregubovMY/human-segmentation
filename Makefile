@@ -1,14 +1,17 @@
-.PHONY: dependencies env clean docs
+.PHONY: dependencies env clean docs shell data_proc train valid visual
 
-dependencies:
-	@echo "Installing dependencies..."
-	poetry install
-	@echo "Initializing pre-commit..."
-
-env: dependencies
+env:
 	@echo "Activating virtual environment..."
-	poetry shell
+	python -m venv env
 
+dependencies: env
+	@echo "Installing dependencies..."
+	./env/Scripts/activate
+	pip install -r requirements.txt
+
+shell:
+	./env/Scripts/activate
+	
 clean:
 	$(MAKE) -C docs clean
 	find . -type f -name "*.py[co]" -delete
@@ -29,4 +32,3 @@ valid:
 
 visual:
 	python -m src.visualization.visualization_main
-	
