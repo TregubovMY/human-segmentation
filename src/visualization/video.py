@@ -4,16 +4,48 @@ import numpy as np
 import cv2
 from .tools import predict
 from tqdm import tqdm
+from typing import List
+from omegaconf import DictConfig
+import tensorflow as tf
 
-def process_videos_in_folder(input_folder, output_folder, models, cfg, fps=30):
-    """Обрабатывает все видеофайлы в указанной папке."""
+def process_videos_in_folder(input_folder: str, output_folder: str, models: List[tf.keras.Model], cfg: DictConfig, fps: int = 30) -> None:
+    """
+    Обрабатывает все видеофайлы в указанной папке.
+
+    :param input_folder: Путь к папке с видеофайлами.
+    :type input_folder: str
+    :param output_folder: Путь к папке для сохранения обработанных видеофайлов.
+    :type output_folder: str
+    :param models: Список моделей для сегментации.
+    :type models: List[Model]
+    :param cfg: Конфигурация для моделей.
+    :type cfg: Dict
+    :param fps: Частота кадров в секунду для выходного видео. По умолчанию равна 30.
+    :type fps: int
+    :return: None
+    """
+
     for filename in os.listdir(input_folder):
         if filename.lower().endswith(('.mp4', '.avi', '.mkv')):
             video_path = os.path.join(input_folder, filename)
             processing_video(video_path, output_folder, models, cfg, fps)
 
-def processing_video(video_path, output_dir, models, cfg, fps=30):
-    """Обрабатывает видео, применяя модели сегментации и добавляя подписи."""
+def processing_video(video_path: str, output_dir: str, models:  List[tf.keras.Model], cfg: DictConfig, fps: int = 30) -> None:
+    """
+    Обрабатывает видео, применяя модели сегментации и добавляя подписи.
+
+    :param video_path: Путь к видеофайлу.
+    :type video_path: str
+    :param output_dir: Путь к папке для сохранения обработанного видеофайла.
+    :type output_dir: str
+    :param models: Список моделей для сегментации.
+    :type models: List[Model]
+    :param cfg: Конфигурация для моделей.
+    :type cfg: Dict
+    :param fps: Частота кадров в секунду для выходного видео. По умолчанию равна 30.
+    :type fps: int
+    :return: None
+    """
     cap = cv2.VideoCapture(video_path)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
