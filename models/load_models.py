@@ -22,7 +22,7 @@ if __name__ == "__main__":
         "u2_net.h5": "https://drive.google.com/uc?id=14AnilEmPdmbZqTlM2YxjTkKFZwFI7Hy1&export=download",
         "u_net.h5":  "https://drive.google.com/uc?id=1HqHml3gYYESKG31QjHTqDCmHXT28Qqy0&export=download",
         "deepLabV3_plus.h5": "https://drive.google.com/uc?id=1b2xX-OqOVWyLFW-wvFejov25F0Acns1h&export=download",
-        "u2_net_lite.h5": "https://drive.google.com/file/d/1b2xX-OqOVWyLFW-wvFejov25F0Acns1h/view?usp=sharing",
+        # "u2_net_lite.h5": "https://drive.google.com/file/d/1b2xX-OqOVWyLFW-wvFejov25F0Acns1h/view?usp=sharing",
     }
 
     for model_name, url in model_urls.items():

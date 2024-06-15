@@ -7,6 +7,7 @@ from ..models.u2_net import model_U2_Net, model_U2_Net_lite
 from ..models.u_net import model_U_Net
 import hydra
 from omegaconf import DictConfig
+import cv2
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
@@ -58,6 +59,14 @@ def main(cfg: DictConfig) -> None:
     if args.fps:
         cfg.visualization.fps = args.fps
 
+    background_image = None
+    if cfg.visualization.bg:
+        background_path = cfg.visualization.bg
+        if os.path.exists(background_path):
+            background_image = cv2.imread(background_path, cv2.IMREAD_COLOR)
+        else:
+            print(f"Фон не найден: {background_path}")
+
     # Получение параметров из конфигурации Hydra
     mode = cfg.visualization.mode
     input_path = cfg.visualization.input
@@ -87,15 +96,16 @@ def main(cfg: DictConfig) -> None:
             loaded_models,
             cfg,
             output_mode="multiply",
+            background_image=background_image
         )
     elif mode == "video":
-      if os.path.isfile(input_path):
-          print()
-          processing_video(input_path, output_path, loaded_models, cfg, fps=fps)
-      elif os.path.isdir(input_path):
-          process_videos_in_folder(input_path, output_path, loaded_models, cfg, fps=fps)
-      else:
-          raise ValueError("Укажите правильный путь к видеофайлу или папке.")
+        if os.path.isfile(input_path):
+            print()
+            processing_video(input_path, output_path, loaded_models, cfg, fps=fps, background_image=background_image)
+        elif os.path.isdir(input_path):
+            process_videos_in_folder(input_path, output_path, loaded_models, cfg, fps=fps, background_image=background_image)
+        else:
+            raise ValueError("Укажите правильный путь к видеофайлу или папке.")
 
 if __name__ == "__main__":
     main()

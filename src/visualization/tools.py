@@ -78,6 +78,34 @@ def predict(image: np.ndarray, model: tf.keras.Model, cfg: DictConfig) -> np.nda
 
     return prediction
 
+def apply_background(image: np.ndarray, mask: np.ndarray, background: Optional[np.ndarray] = None) -> np.ndarray:
+    """
+    Применяет маску к изображению и заменяет фон.
+
+    :param image: Оригинальное изображение.
+    :type image: np.ndarray
+    :param mask: Маска для применения.
+    :type mask: np.ndarray
+    :param background: Фоновое изображение (по умолчанию None - черный фон).
+    :type background: Optional[np.ndarray]
+    :return: Изображение с замененным фоном.
+    :rtype: np.ndarray
+    """
+
+    h, w, _ = image.shape
+    if background is None:
+        background = np.zeros_like(image)
+    else:
+        background = cv2.resize(background, (w, h))
+
+    # Применяем маску к исходному изображению и фону
+    foreground = image * mask
+    background = background * (1 - mask)
+
+    # Комбинируем передний план и фон
+    result = foreground + background
+
+    return result.astype(np.uint8)
 
 def masked_image(image: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """

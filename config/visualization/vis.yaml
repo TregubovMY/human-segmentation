@@ -1,17 +1,18 @@
-# mode: video
+mode: video
 
-# input: data/test/video/input/
-# output: data/test/video/output/
+input: data/test/video/input/
+output: data/test/video/output/
 
-mode: image
+# mode: image
 
-input: data/test/images/input/
-output: data/test/images/output/
+# input: data/test/images/input/
+# output: data/test/images/output/
 
 models:
   - model_deeplabV3_plus
-  - model_u_net
-  - model_u2_net
+  # - model_u_net
+  # - model_u2_net
 
+bg: data/backgrounds/1.jpg
 
 fps: 50

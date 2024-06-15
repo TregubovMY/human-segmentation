@@ -1,4 +1,4 @@
-.PHONY: dependencies env clean docs shell data_proc train valid visual
+.PHONY: dependencies env clean docs shell data_proc train valid visual models
 
 env:
 	@echo "Activating virtual environment..."
@@ -6,11 +6,11 @@ env:
 
 dependencies: env
 	@echo "Installing dependencies..."
-	./env/Scripts/activate
+	.\env\Scripts\activate
 	pip install -r requirements.txt
 
 shell:
-	./env/Scripts/activate
+	.\env\Scripts\activate
 	
 clean:
 	$(MAKE) -C docs clean
@@ -32,3 +32,9 @@ valid:
 
 visual:
 	python -m src.visualization.visualization_main
+
+models:
+	python ./models/load_models.py
+
+data:
+	python ./data/load_data.py --source people_segmentation

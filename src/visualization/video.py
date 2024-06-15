@@ -2,13 +2,14 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import numpy as np
 import cv2
-from .tools import predict
+from .tools import predict, apply_background
 from tqdm import tqdm
-from typing import List
+from typing import List, Optional
 from omegaconf import DictConfig
 import tensorflow as tf
 
-def process_videos_in_folder(input_folder: str, output_folder: str, models: List[tf.keras.Model], cfg: DictConfig, fps: int = 30) -> None:
+def process_videos_in_folder(input_folder: str, output_folder: str, models: List[tf.keras.Model],
+                             cfg: DictConfig, fps: int = 30, background_image: Optional[np.ndarray] = None) -> None:
     """
     Обрабатывает все видеофайлы в указанной папке.
 
@@ -28,9 +29,10 @@ def process_videos_in_folder(input_folder: str, output_folder: str, models: List
     for filename in os.listdir(input_folder):
         if filename.lower().endswith(('.mp4', '.avi', '.mkv')):
             video_path = os.path.join(input_folder, filename)
-            processing_video(video_path, output_folder, models, cfg, fps)
+            processing_video(video_path, output_folder, models, cfg, fps, background_image = background_image)
 
-def processing_video(video_path: str, output_dir: str, models:  List[tf.keras.Model], cfg: DictConfig, fps: int = 30) -> None:
+def processing_video(video_path: str, output_dir: str, models:  List[tf.keras.Model], 
+                     cfg: DictConfig, fps: int = 30, background_image: Optional[np.ndarray] = None) -> None:
     """
     Обрабатывает видео, применяя модели сегментации и добавляя подписи.
 
@@ -76,7 +78,7 @@ def processing_video(video_path: str, output_dir: str, models:  List[tf.keras.Mo
             # Создаем список сегментированных кадров с подписями
             segmented_frames = []
             for i, mask in enumerate(resized_masks):
-                segmented_frame = frame * mask
+                segmented_frame = apply_background(frame, mask, background_image)  # Применяем фон
                 cv2.putText(segmented_frame, model_names[i], (100, 500), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 segmented_frames.append(segmented_frame)
 

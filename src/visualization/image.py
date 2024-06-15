@@ -2,7 +2,7 @@ from .tools import *
 import tensorflow as tf
 from tqdm import tqdm
 from glob import glob
-from typing import List
+from typing import List, Optional
 from omegaconf import DictConfig
 
 def apply_mask(image: np.ndarray, mask: np.ndarray, mode: str = "multiply") -> np.ndarray:
@@ -23,17 +23,18 @@ def apply_mask(image: np.ndarray, mask: np.ndarray, mode: str = "multiply") -> n
     :rtype: np.ndarray
     """
     if mode == "multiply":
-        return image * mask
+        return masked_image(image, mask)
     elif mode == "concatenate":
         return np.concatenate([image, mask], axis=1)
     elif mode == "concatenate_multiplied":
-        multiplied = image * mask
+        multiplied = masked_image(image, mask)
         mask = np.repeat(mask, 3, axis=2) 
         return np.concatenate([image, mask, multiplied], axis=1)
     else:
         return mask  # Default: Return only the mask
 
-def present_results_on_models(dir_images: str, save_dir: str, models: List[tf.keras.Model], cfg: DictConfig, output_mode: str = "multiply") -> None:
+def present_results_on_models(dir_images: str, save_dir: str, models: List[tf.keras.Model], 
+cfg: DictConfig, output_mode: str = "multiply", background_image: Optional[np.ndarray] = None) -> None:
     """
     Представляет результаты сегментации для нескольких моделей на изображениях из указанной директории.
 
@@ -61,6 +62,7 @@ def present_results_on_models(dir_images: str, save_dir: str, models: List[tf.ke
         for model in models:
             y = predict(image, model, cfg)
             masked_img = apply_mask(image, y, output_mode)
+            masked_img = apply_background(image, y, background_image)
             images.append(masked_img)
 
         result_img = np.concatenate(images, axis=1)
